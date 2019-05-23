@@ -1,0 +1,87 @@
+model "LTD - Splitting - Balanced"
+
+	uses "mmxprs"
+	setparam("XPRS_MAXTIME",-300)!Set the solver timout to 5 minutes
+	declarations
+		!Variables
+		DELTA = 2	!!MODIFY THIS PARAMETER
+		NODE = 3	!!MODIFY THIS PARAMETER
+		NODES = 1..NODE
+		! I/O 
+		T: array(NODES,NODES) of real !Input Traffic Matrix
+		B: array(NODES,NODES) of mpvar !Output Matrix
+		flowMax: mpvar
+		! Flow Matrices
+		flow: array(NODES, NODES) of mpvar
+		FL: array(NODES, NODES, NODES, NODES) of mpvar
+	end-declarations
+	
+	!Initialize
+	setrandseed(7)
+	! Generate a matrix of Uniform[6,12] numbers
+	forall(s,d in NODES | s <> d) do
+		T(s,d):= 6+random*(12-6)
+	end-do
+	
+	!Objective Function
+	OBJ_F:=flowMax
+	
+	!Constraints
+	!Flow Relationships
+	forall(i,j in NODES)flow(i,j) <= flowMax
+	forall(i,j in NODES)flow(i,j)=sum(s,d in NODES)FL(i,j,s,d)
+	
+	!Flow Conservation
+	forall(s,d in NODES)do
+		forall(i in NODES|i<>s and i<>d)do
+			sum(j in NODES|j<>s and j<>d)FL(i,j,d,s) - sum(j in NODES|j<>s and j<>d)FL(j,i,d,s) = 0
+		end-do	
+		sum(j in NODES)FL(s,j,s,d) = T(s,d)
+		sum(j in NODES)FL(j,s,s,d) = 0
+		sum(j in NODES)FL(j,d,s,d) = T(s,d)
+		sum(j in NODES)FL(d,j,s,d) = 0
+	end-do
+	forall(s,d in NODES|s=d)do
+		forall(i,j in NODES)FL(i,j,s,d) = 0 !Main Diagonal set = 0
+	end-do
+	
+	!Feasability
+	forall(i,j,s,d in NODES)FL(i,j,s,d) <= B(i,j)*T(s,d)
+	
+	!Connectivity constraints
+	forall (i,j in NODES) B(i,j) is_binary
+	forall (i in NODES) sum(j in NODES) B(i,j) <= DELTA
+	forall (j in NODES) sum(i in NODES) B(i,j) <= DELTA
+	
+	minimize(OBJ_F)
+	
+	!Display output
+	writeln("MaxFlow: ", getobjval)
+	writeln("\nB matrix:")
+	forall(i in NODES)do
+		forall(j in NODES)write(getsol(B(i,j)), "\t")
+		write("\n")
+	end-do
+	writeln("\nTraffic matrix:")
+	forall(i in NODES)do
+		forall(j in NODES)write(T(i,j), "\t")
+		write("\n")
+	end-do
+	writeln("\nFlow matrix:")
+	forall(i in NODES)do
+		forall(j in NODES)write(getsol(flow(i,j)), "\t")
+		write("\n")
+	end-do
+	writeln("\nFlow Specific matrices:")
+	forall(s,d in NODES)do
+		writeln("From Source ", s, " to Sink ", d)
+		forall(i in NODES)do
+			forall(j in NODES)write(getsol(FL(i,j,s,d)), "\t")
+			write("\n")
+		end-do
+	end-do
+	!forall(i,j in NODES)writeln(i,j, " ",  getsol(flow(i,j)))
+	!writeln("B matrix:")
+	!forall(i,j in NODES)writeln(i,j, " ",  getsol(B(i,j)))
+	
+end-model

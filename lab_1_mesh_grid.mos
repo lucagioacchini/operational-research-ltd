@@ -1,0 +1,107 @@
+model "Mesh grid"
+
+	uses "mmxprs"
+	setparam("XPRS_MAXTIME",-300)!Set the solver timout to 5 minutes
+	declarations
+		!Variables
+		DELTA = 3	!!MODIFY THIS PARAMETER
+		NODE = 6	!!MODIFY THIS PARAMETER
+		NODES = 1..NODE
+		GRIDROW = floor(sqrt(NODE))
+		GRIDCOL = ceil(NODE/GRIDROW)
+		! I/O 
+		T: array(NODES,NODES) of real !Input Traffic Matrix
+		B: array(NODES,NODES) of mpvar !Output Matrix
+		flowMax: mpvar
+		! Flow Matrices
+		flow: array(NODES, NODES) of mpvar
+		FL: array(NODES, NODES, NODES, NODES) of mpvar
+		
+		!B2: array(NODES, NODES, NODES, NODES) of mpvar
+	end-declarations
+	
+	!Initialize
+	setrandseed(7)
+	! Generate a matrix of Uniform[6,12] numbers
+	forall(s,d in NODES | s <> d) do
+		T(s,d):= 1+random*(10-1)
+	end-do
+	
+	!Objective Function
+	OBJ_F:=flowMax
+	
+	!Constraints
+	!Flow Relationships
+	forall(i,j in NODES)flow(i,j) <= flowMax
+	forall(i,j in NODES)flow(i,j)=sum(s,d in NODES)FL(i,j,s,d)
+	
+	!Flow Conservation
+	forall(s,d in NODES)do
+		forall(i in NODES|i<>s and i<>d)do
+			sum(j in NODES|j<>d)FL(i,j,d,s) - sum(j in NODES|j<>s)FL(j,i,d,s) = 0
+		end-do	
+		sum(j in NODES)FL(s,j,s,d) = T(s,d)
+		sum(j in NODES)FL(j,s,s,d) = 0
+		sum(j in NODES)FL(j,d,s,d) = T(s,d)
+		sum(j in NODES)FL(d,j,s,d) = 0
+	end-do
+	forall(s,d in NODES|s=d)do
+		forall(i,j in NODES)FL(i,j,s,d) = 0 !Main Diagonal set = 0
+	end-do
+	!Mesh Grid connectivity
+	forall (s,d,i,j in NODES)do 
+		condition_1:= ((i-1) mod GRIDCOL = 0 and j=(GRIDCOL*ceil(i/GRIDROW)))
+		condition_2:= (i<>j and j=i+1 and i mod GRIDCOL <> 0)
+		condition_3:= (i<>j and j=i+GRIDCOL)
+		condition_4:= i<=GRIDCOL and j=i+GRIDCOL*(GRIDROW-1)
+		condition_5:= ((j-1) mod GRIDCOL = 0 and i=(GRIDCOL*ceil(j/GRIDROW)))
+		condition_6:= (j<>i and i=j+1 and j mod GRIDCOL <> 0)
+		condition_7:= (j<>i and i=j+GRIDCOL)
+		condition_8:= j<=GRIDCOL and i=j+GRIDCOL*(GRIDROW-1)
+		adjacent_nodes:= condition_1 or condition_2 or condition_3 or condition_4 or condition_5 or condition_6 or condition_7 or condition_8
+		if not (adjacent_nodes) then
+			FL(i,j,s,d) = 0
+		end-if
+	end-do
+	
+	
+	!Feasability
+	forall(i,j,s,d in NODES)FL(i,j,s,d) <= B(i,j)*T(s,d)
+	
+	!Connectivity constraints
+	forall (i,j in NODES) B(i,j) is_binary
+	forall (i in NODES) sum(j in NODES) B(i,j) <= DELTA
+	forall (j in NODES) sum(i in NODES) B(i,j) <= DELTA
+	
+	minimize(OBJ_F)
+	
+	!Display output
+	writeln("MaxFlow: ", getobjval)
+	writeln("\nB matrix:")
+	forall(i in NODES)do
+		forall(j in NODES)write(getsol(B(i,j)), "\t")
+		write("\n")
+	end-do
+	writeln("\nTraffic matrix:")
+	forall(i in NODES)do
+		forall(j in NODES)write(T(i,j), "\t")
+		write("\n")
+	end-do
+	writeln("\nFlow matrix:")
+	forall(i in NODES)do
+		forall(j in NODES)write(getsol(flow(i,j)), "\t")
+		write("\n")
+	end-do
+	writeln("\nFlow Specific matrices:")
+	forall(s,d in NODES)do
+		writeln("From Source ", s, " to Sink ", d)
+		forall(i in NODES)do
+			forall(j in NODES)write(getsol(FL(i,j,s,d)), "\t")
+			write("\n")
+		end-do
+	end-do
+	!forall(i,j in NODES)writeln(i,j, " ",  getsol(flow(i,j)))
+	!writeln("B matrix:")
+	!forall(i,j in NODES)writeln(i,j, " ",  getsol(B(i,j)))
+	
+end-model
