@@ -36,7 +36,7 @@ model "LTD - No Splitting - Balanced"
 	!Flow Conservation
 	forall(s,d in NODES)do
 		forall(i in NODES|i<>s and i<>d)do
-			sum(j in NODES|j<>s and j<>d)FL(i,j,d,s) - sum(j in NODES|j<>s and j<>d)FL(j,i,d,s) = 0
+			sum(j in NODES)FL(i,j,d,s) - sum(j in NODES)FL(j,i,d,s) = 0
 		end-do	
 		sum(j in NODES)FL(s,j,s,d) = T(s,d)
 		sum(j in NODES)K(s,j,s,d) = 1
