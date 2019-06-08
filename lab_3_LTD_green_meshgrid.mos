@@ -1,0 +1,145 @@
+model "Green Networking - Random Topology"
+
+	uses "mmxprs"
+	setparam("XPRS_MAXTIME",-300)!Set the solver timout to 5 minutes
+	declarations
+		!Variables
+		DELTA = 3	!!MODIFY THIS PARAMETER
+		NODE = 6	!!MODIFY THIS PARAMETER
+		NODES = 1..NODE
+		GRIDROW = floor(sqrt(NODE))
+		GRIDCOL = ceil(NODE/GRIDROW)
+		ALPHA = 0.9
+
+		PN: array(NODES) of mpvar ! Power of nodes
+		x: array(NODES) of mpvar ! Nodes status indicator array
+		y: array (NODES, NODES) of mpvar ! Link status indicator matrix
+						
+		! I/O 
+		P_idle: array(NODES) of real ! Nodes static power consumption 
+		Q: array(NODES) of real	! Angular Coefficient of the links power consumption	
+		CL: array(NODES, NODES) of real ! Link Capacity Matrix
+		T: array(NODES,NODES) of real !Input Traffic Matrix
+		
+		! Flow Matrices
+		flow: array(NODES, NODES) of mpvar
+		FL: array(NODES, NODES, NODES, NODES) of mpvar
+	end-declarations
+	
+	!Init
+	setrandseed(7)
+	! Generate a matrix of Uniform[6,12] numbers
+	forall(s,d in NODES | s <> d) do
+		T(s,d):= 6+random*(12-6)
+	end-do
+	
+	! Generate Capacity for links
+	forall(i in NODES) do
+		forall(j in NODES)CL(i,j):= 30+random*(60-30)
+	end-do
+	
+	! Generate Angular coefficients
+	forall(i in NODES) do
+		Q(i):= 1+random*(2-1)
+	end-do
+	
+	! Generate nodes static power consumption
+	forall(i in NODES) do
+		P_idle(i):= 10+random*(15-10)
+	end-do
+	
+	!Objective Function
+	forall(i in NODES) do
+		F_ij := sum(j in NODES)flow(i,j)+sum(j in NODES)flow(j,i)
+		PN(i) = P_idle(i)*x(i) + Q(i)*(F_ij)
+	end-do
+	
+	OBJ_F:=sum(i in NODES)PN(i)
+		
+	!Constraints
+	!Flow Relationships
+	forall(i,j in NODES) flow(i,j)<=ALPHA*CL(i,j)*y(i,j)
+	forall(i, j in NODES)flow(i,j) = sum(s,d in NODES)FL(i,j,s,d)
+	forall(i,j,s,d in NODES)FL(i,j,s,d) <= T(s,d)*y(i,j)
+	
+	!Flow Conservation
+	forall(s,d in NODES)do
+		forall(i in NODES|i<>s and i<>d)do
+			sum(j in NODES)FL(i,j,d,s) - sum(j in NODES)FL(j,i,d,s) = 0
+		end-do	
+		sum(j in NODES)FL(s,j,s,d) = T(s,d)
+		sum(j in NODES)FL(j,s,s,d) = 0
+		sum(j in NODES)FL(j,d,s,d) = T(s,d)
+		sum(j in NODES)FL(d,j,s,d) = 0
+	end-do
+	forall(s,d in NODES|s=d)do
+		forall(i,j in NODES)FL(i,j,s,d) = 0 !Main Diagonal set = 0
+	end-do
+	
+	!Mesh Grid topology
+	forall (s,d,i,j in NODES)do 
+		condition_1:= ((i-1) mod GRIDCOL = 0 and j=(GRIDCOL*ceil(i/GRIDROW)))
+		condition_2:= (i<>j and j=i+1 and i mod GRIDCOL <> 0)
+		condition_3:= (i<>j and j=i+GRIDCOL)
+		condition_4:= i<=GRIDCOL and j=i+GRIDCOL*(GRIDROW-1)
+		condition_5:= ((j-1) mod GRIDCOL = 0 and i=(GRIDCOL*ceil(j/GRIDROW)))
+		condition_6:= (j<>i and i=j+1 and j mod GRIDCOL <> 0)
+		condition_7:= (j<>i and i=j+GRIDCOL)
+		condition_8:= j<=GRIDCOL and i=j+GRIDCOL*(GRIDROW-1)
+		adjacent_nodes:= condition_1 or condition_2 or condition_3 or condition_4 or condition_5 or condition_6 or condition_7 or condition_8
+		if not (adjacent_nodes) then
+			FL(i,j,s,d) = 0
+		end-if
+	end-do
+	
+	!Connectivity constraints
+	forall (i in NODES)do 
+		sum(j in NODES) y(i,j) <= DELTA*x(i)
+		sum(j in NODES) y(j,i) <= DELTA*x(i)
+	end-do
+	
+	!Domain
+	forall (i,j in NODES) y(i,j) is_binary
+	forall (i in NODES) x(i) is_binary
+	
+	
+	minimize(OBJ_F)
+	
+	
+	!Display output
+	writeln("Overall Power: ", getobjval)
+	writeln("\nTraffic matrix:")
+	forall(i in NODES)do
+		forall(j in NODES)write(T(i,j), "\t")
+		write("\n")
+	end-do
+	writeln("\nY matrix:")
+	forall(i in NODES)do
+		forall(j in NODES)write(getsol(y(i,j)), "\t")
+		write("\n")
+	end-do
+	writeln("\nAngular Coefficient:")
+	forall(i in NODES)do
+		write(Q(i), "\t")
+		write("\n")
+	end-do
+	writeln("\nLink Capacity:")
+	forall(i in NODES)do
+		forall(j in NODES)write(CL(i,j), "\t")
+		write("\n")
+	end-do
+	writeln("\nFlow matrix:")
+	forall(i in NODES)do
+		forall(j in NODES)write(getsol(flow(i,j)), "\t")
+		write("\n")
+	end-do
+	writeln("\nFlow Specific matrices:")
+	forall(s,d in NODES)do
+		writeln("From Source ", s, " to Sink ", d)
+		forall(i in NODES)do
+			forall(j in NODES)write(getsol(FL(i,j,s,d)), "\t")
+			write("\n")
+		end-do
+	end-do
+	
+end-model
