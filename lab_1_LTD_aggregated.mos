@@ -1,0 +1,78 @@
+model "LTD - Aggregated - Balanced"
+	
+	uses "mmxprs"
+	setparam("XPRS_MAXTIME",-300)! Set the solver timout to 5 minutes
+	declarations
+		! Variables
+		NODE = 24 !!MODIFY THIS PARAMETER
+		DELTA = 4 !!MODIFY THIS PARAMETER
+		NODES = 1..NODE 
+		! I/O
+		T: array(NODES ,NODES) of real ! Input Traffic Matrix
+		Ts: array(NODES) of real ! Input Aggregated Traffic Matrix
+		B: array(NODES ,NODES) of mpvar ! Output Matrix
+		Fmax: mpvar
+		! Flow Matrices
+		F_ij: array(NODES ,NODES) of mpvar
+		FL: array(NODES ,NODES ,NODES) of mpvar
+	end-declarations
+	
+	! Initialize
+	setrandseed (7)
+	! Generate a matrix of Uniform[6,12] numbers
+	forall(n,m in  NODES | n <> m) do
+		T(n,m):= 6+random*(12-6)
+	end-do
+	! Aggregate flows
+	forall(s in  NODES)do
+	Ts(s) := sum(d in  NODES|s<>d) T(s,d)
+	end-do
+	
+	! Constraints
+	! Flow Relationships
+	forall(i,j in  NODES) F_ij(i,j)<=Fmax
+	forall(i,j in  NODES) F_ij(i,j)= sum(s in  NODES) FL(i,j,s)
+	forall(i,j in  NODES) F_ij(i,j) >= 0
+	forall(i,j,s in  NODES) FL(i,j,s) >= 0
+	Fmax >= 0
+	
+	! Flow Conservation
+	forall(i, s in NODES | i<>s) sum (j in  NODES) (FL(i,j,s) - FL(j,i,s)) = (-1* T(s,i))
+	forall(i, s in NODES | i=s) sum (j in  NODES) (FL(i,j,s) - FL(j,i,s)) = Ts(s)
+	
+	! Feasibility
+	forall(i,j,s in  NODES) FL(i,j,s) <= B(i,j)*Ts(s)
+	
+	! Connectivity constraints
+	forall(i,j in  NODES) B(i,j) is_binary
+	forall(i in  NODES) sum(j in  NODES) B(i,j)<=DELTA
+	forall(j in  NODES) sum(i in  NODES) B(i,j)<=DELTA
+	
+	minimize(Fmax)
+	
+	!Display output
+	writeln("MaxFlow: ", getobjval)
+	writeln("\nB matrix:")
+	forall(i in NODES)do
+		forall(j in NODES)write(getsol(F_ij(i,j)), "\t")
+		write("\n")
+	end-do
+	writeln("\nTraffic matrix:")
+	forall(i in NODES)do
+		forall(j in NODES)write(T(i,j), "\t")
+		write("\n")
+	end-do
+	writeln("\nFlow matrix:")
+	forall(i in NODES)do
+		forall(j in NODES)write(getsol(F_ij(i,j)), "\t")
+		write("\n")
+	end-do
+	writeln("\nFlow Specific matrices:")
+	forall(s in NODES)do
+		writeln("From Source ", s)
+		forall(i in NODES)do
+			forall(j in NODES)write(getsol(FL(i,j,s)), "\t")
+			write("\n")
+		end-do
+	end-do
+end-model
