@@ -19,10 +19,9 @@ This work is based of three main tasks:
 To see the full work please see the [documentation](https://github.com/lucagioacchini/ict4BuildingDesign/tree/master/docs/or.pdf)
 
 ### Built With
-* [DesignBuilder](http://designbuilderitalia.it/)
-* [Energy+](https://energyplus.net/)
-* [Python3](https://www.python.org/download/releases/3.0/)
+* [Xpress](https://www.fico.com/en/products/fico-xpress-optimization)
+* [Matlab](https://it.mathworks.com/?s_tid=gn_logo)
 
 
 ## 
-(c) 2020, Luca Gioacchini, Francesco Barlocco, Alan Cedric Grimm, Bruno Valente, Stefano Picerno
+(c) 2019, Luca Gioacchini, Riccardo Sappa, Daniele Russo, Francesco Guaiana
