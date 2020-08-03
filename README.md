@@ -16,7 +16,7 @@ This work is based of three main tasks:
 2. Development of a greedy heuristic to solve the considered LTD problem. It is based on three phases: the actual heuristic algorithm, the Local Search one whichallows to improve the solution obtained by the heuristic and finally the additional Node Placement algorithm which implements the Manhattan topology.
 3. Green Networking approach applied to the considered LTD problem. Green Networking means projecting and developing a network by optimizing power consumption parameters.  
 
-To see the full work please see the [documentation](https://github.com/lucagioacchini/ict4BuildingDesign/tree/master/docs/or.pdf)
+To see the full work please see the [documentation](https://github.com/lucagioacchini/operational-research-ltd/tree/master/docs/or.pdf)
 
 ### Built With
 * [Xpress](https://www.fico.com/en/products/fico-xpress-optimization)
