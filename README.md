@@ -10,9 +10,9 @@ This work is part of the Operational Research course at Politecnico di Torino.
 This work is based of three main tasks:
 1. LTD problem definition and solving. The Logical Topology Design problem aims at determining a network topology in order to route a certain amount of flow within the network nodes by ensuring a minimum (or maximum) cost, such as the maximum traffic flow passing through a link. Four main scenarios are tested:
     1. Full mesh topolgy with flow splitting enabled
-  2. Full mesh topology with flow splitting disabled
-  3. Square mesh grid topology with flow splitting enabled
-  4. Square mesh grid topology with flow splitting disabled
+    2. Full mesh topology with flow splitting disabled
+    3. Square mesh grid topology with flow splitting enabled
+    4. Square mesh grid topology with flow splitting disabled
 
 
 To see the full work please see the [documentation](https://github.com/lucagioacchini/ict4BuildingDesign/tree/master/docs/ICT4BD.pdf)
